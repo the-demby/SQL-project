@@ -1,0 +1,395 @@
+SELECT
+  COUNT(*)
+FROM `sql-project-exam.olist.Customers`
+;
+
+##Customers
+#Counting the number of unique customers in the table
+select
+  count(distinct customer_unique_id)
+FROM `sql-project-exam.olist.Customers`
+;
+
+#Counting the number of customers living in a department starting with "13"
+select
+ count(distinct case when starts_with(cast(customer_zip_code_prefix as string), '13') = TRUE then customer_unique_id else null end)
+from `sql-project-exam.olist.Customers`
+;
+
+#Selecting the states with more than 10000 clients
+select
+ customer_state,
+ count(distinct customer_unique_id) as Nb_clients
+from `sql-project-exam.olist.Customers`
+group by
+ customer_state
+having
+ Nb_clients>10000
+Order by
+ Nb_clients desc
+;
+
+##Products
+#Number of unique products
+select
+  count(distinct product_id)
+FROM `sql-project-exam.olist.products`
+;
+
+#Counting the number of NULL value
+select
+ count(*) - count(product_id) as product_id,
+ count(*) - count(product_category_name) as product_category_name,
+ count(*) - count(product_name_lenght) as product_name_lenght,
+ count(*) - count(product_description_lenght) as product_description_lenght,
+ count(*) - count(product_photos_qty) as product_photos_qty,
+ count(*) - count(product_height_cm) as product_height_cm,
+ count(*) - count(product_length_cm) as product_length_cm,
+ count(*) - count(product_weight_g) as product_weight_g,
+ count(*) - count(product_width_cm) as product_width_cm
+from `sql-project-exam.olist.products`
+;
+
+#The 10 most present products
+select
+ product_category_name,
+ count(distinct product_id) as NB_product
+from `sql-project-exam.olist.products`
+group by
+ product_category_name
+order by
+ NB_product desc
+limit 10
+;
+
+#Selecting the products with the highest average weight
+select
+ product_category_name,
+ avg(product_weight_g) as avg_weight
+from `sql-project-exam.olist.products`
+group by
+ product_category_name
+order by
+ avg_weight desc
+limit 10
+;
+
+#Q8:Selecion
+select
+ product_category_name,
+ avg(product_description_lenght) as avg_desc_length
+from `sql-project-exam.olist.products`
+group by
+ product_category_name
+having
+ 400 < avg_desc_length and avg_desc_length<450 or 
+ 1000 < avg_desc_length and avg_desc_length < 1050
+order by
+ avg_desc_length desc
+;
+
+
+##Orders
+#Olist's revenue over years
+select
+ extract(year from order_purchase_timestamp) as year,
+ sum(price) as annual_revenue
+from `sql-project-exam.olist.orders` o
+inner join `sql-project-exam.olist.Items` i on (o.order_id = i.order_id)
+group by
+ year
+ order by year asc
+;
+
+#Orders occurence on monday
+select
+ extract (dayofweek from order_purchase_timestamp) as day,
+ count(*)
+from `sql-project-exam.olist.orders`
+group by
+ day
+having
+ day = 2
+;
+
+select
+ count(*)
+from `sql-project-exam.olist.orders`
+where extract(dayofweek from order_purchase_timestamp) = 2
+;
+
+#Orders in december or june
+select
+ count(*)
+from `sql-project-exam.olist.orders`
+where extract(month from order_purchase_timestamp) = 6 or extract(month from order_purchase_timestamp) = 12
+;
+
+#Orders between 9am and 23pm on sunday in 2018
+select
+  count(*)
+from
+  `sql-project-exam.olist.orders`
+where
+  extract(year FROM order_purchase_timestamp) = 2018
+  and extract(dayofweek from order_purchase_timestamp) = 1
+  and extract(hour from order_purchase_timestamp) >= 9
+  and extract(hour from order_purchase_timestamp) < 23
+;
+
+#Number of orders per day
+select 
+ extract(dayofweek from order_purchase_timestamp) as day,
+ case when extract (dayofweek from order_purchase_timestamp) = 1 then 'Sunday' 
+   when extract (dayofweek from order_purchase_timestamp) =2 then 'Monday'
+   when extract (dayofweek from order_purchase_timestamp) =3 then 'Tuesday' 
+   when extract (dayofweek from order_purchase_timestamp) =4 then 'Wednesday'
+   when extract (dayofweek from order_purchase_timestamp) =5 then 'Thusday' 
+   when extract (dayofweek from order_purchase_timestamp) =6 then 'Friday'
+   when extract (dayofweek from order_purchase_timestamp) =7 then 'Saturday' end as daytime,
+ count(*)
+from `sql-project-exam.olist.orders`
+group by 
+ day, daytime
+order by 
+ day
+;
+
+#Defining daypart and number of orders
+select 
+ case when extract (hour from order_purchase_timestamp) >= 6 and extract (hour from order_purchase_timestamp) < 12 then 'Morning' 
+   when extract (hour from order_purchase_timestamp) >= 12 and extract (hour from order_purchase_timestamp) < 14 then 'Lunch' 
+   when extract (hour from order_purchase_timestamp) >= 14 and extract (hour from order_purchase_timestamp) < 18 then 'afternoon'  
+   when extract (hour from order_purchase_timestamp) >= 18 and extract (hour from order_purchase_timestamp) < 23 then 'Evening' 
+   else 'Night' end as daypart,
+ count(*)
+from `sql-project-exam.olist.orders`
+group by 
+ daypart
+;
+
+#Average delivery time
+select
+ avg(date_diff(order_delivered_customer_date, order_purchase_timestamp, day)) as time_to_deliver
+from `sql-project-exam.olist.orders`
+;
+#We didn't get the same answer as the teacher
+
+#Number of orders and average delivery time per destination
+select
+ customer_state,
+ count(*) as Nb_orders,
+ avg(date_diff(order_delivered_customer_date, order_purchase_timestamp, day)) as time_to_deliver
+from `sql-project-exam.olist.orders` o
+inner join `sql-project-exam.olist.Customers` c on (o.customer_id = c.customer_id)
+group by
+ customer_state
+order by time_to_deliver
+;
+
+#Top 10 customers for 2018 in terms of revenue
+select
+ customer_id,
+ count(distinct o.order_id) as nb_order,
+ sum(price) as total_revenue
+from `sql-project-exam.olist.orders` o
+inner join `sql-project-exam.olist.Items` i on (o.order_id = i.order_id)
+where
+ extract(year from order_purchase_timestamp) = 2018
+group by
+ customer_id
+order by total_revenue desc
+limit 10
+;
+
+#Most purchased products categories in PB and RO
+select
+ c.customer_state,
+ p.product_category_name,
+ count(distinct o.order_id) as nb_orders
+from `sql-project-exam.olist.Items` i
+inner join `sql-project-exam.olist.products` p on (p.product_id = i.product_id)
+inner join `sql-project-exam.olist.orders` o on (i.order_id = o.order_id)
+inner join `sql-project-exam.olist.Customers` c on (c.customer_id = o.customer_id)
+where
+ c.customer_state in ('PB','RO')
+ and extract(year from o.order_purchase_timestamp) = 2018
+group by 
+ c.customer_state, p.product_category_name
+having
+ nb_orders>=5
+order by
+ c.customer_state, nb_orders desc
+;
+
+##More complex questions
+#Q19: 
+with Customer_purchases as (
+  select
+   c.customer_unique_id,
+   i.product_id,
+   count(distinct cast(o.order_purchase_timestamp as date)) as distinct_purchases
+  from `sql-project-exam.olist.orders` o
+  inner join `sql-project-exam.olist.Items` i on (o.order_id = i.order_id)
+  inner join `sql-project-exam.olist.Customers` c on (o.customer_id = c.customer_id)
+  group by
+   c.customer_unique_id,i.product_id
+)
+select
+count(distinct customer_unique_id)
+from Customer_purchases
+where distinct_purchases > 1
+;
+
+
+#Q20 Identifying the top 20% products that contribute to 80% of the revenue in 2017 with their trend from 2017 to 2018 
+with Product_Revenue2017 as (
+  select
+    i.product_id,
+    sum(i.price) as revenue_2017
+  from `sql-project-exam.olist.Items` i
+  inner join `sql-project-exam.olist.orders` o on i.order_id = o.order_id
+  where
+    extract(YEAR from o.order_purchase_timestamp) = 2017
+  group by i.product_id
+),
+
+Top_Products2017 as (
+  select
+    product_id,
+    revenue_2017,
+    percent_rank() over (order by revenue_2017 desc) as rank_percent
+  from Product_Revenue2017
+)
+
+select
+  tp.product_id,
+  p.product_category_name,
+  tp.revenue_2017,
+  tp.rank_percent,
+  sum(i.price) as revenue_2018,
+  ((sum(i.price) - tp.revenue_2017) / tp.revenue_2017) * 100 as growth_percentage
+from
+  Top_Products2017 tp
+inner join
+  `sql-project-exam.olist.Items` i on tp.product_id = i.product_id
+inner join
+  `sql-project-exam.olist.products` p on tp.product_id = p.product_id
+inner join
+  `sql-project-exam.olist.orders` o on i.order_id = o.order_id
+where
+  extract(YEAR from o.order_purchase_timestamp) = 2018
+  and tp.rank_percent <= 0.2  -- Filter for the top 20%
+group by
+  tp.product_id, p.product_category_name, tp.revenue_2017, tp.rank_percent
+order by
+  tp.revenue_2017 desc
+;
+#The results show that the most bought products category in 2017 is the one called cool-stuff with a revenue of 34581 but the sales decreased by 90% in 2018. The second one is "cama_mesa_banho" and its sales decreased by almost 67% in 2018. The third one is "beleza_saude" and its sales increased by 47% in 2018.
+
+#Q21 Identifying seasonality
+
+##Quaterly analysis
+with Product_Sales as (
+  select
+    p.product_category_name,
+    extract(QUARTER from o.order_purchase_timestamp) as quarter,
+    extract(YEAR from o.order_purchase_timestamp) as year,
+    sum(i.price) as total_sales
+  from
+    `sql-project-exam.olist.Items` i
+  inner join
+    `sql-project-exam.olist.products` p on i.product_id = p.product_id
+  inner join
+    `sql-project-exam.olist.orders` o on i.order_id = o.order_id
+  group by
+    p.product_category_name, year, quarter
+)
+
+select
+  product_category_name,
+  year,
+  quarter,
+  avg(total_sales) as average_sales,
+  lag(avg(total_sales), 1) over (partition by product_category_name order by year, quarter) as prev_month_sales,
+  (avg(total_sales) - lag(avg(total_sales), 1) over (partition by product_category_name order by year, quarter)) / lag(avg(total_sales), 1) over (partition by product_category_name order by year, quarter) as sales_growth_rate
+from Product_Sales
+group by
+  product_category_name, year, quarter
+order by
+  product_category_name, year, quarter
+;
+#This query gives us a table with the average sales by quarter and year. It's a bit difficult to read as result, and the analysis for the first three products category didn't show any seasonality. A visualization would be better to check for seasonality. 
+
+##Monthly analysis
+with Monthly_Sales as (
+  select
+    p.product_category_name,
+    extract(MONTH from o.order_purchase_timestamp) as month,
+    extract(YEAR from o.order_purchase_timestamp) as year,
+    sum(i.price) as total_sales
+  from
+    `sql-project-exam.olist.Items` i
+  inner join
+    `sql-project-exam.olist.products` p on i.product_id = p.product_id
+  inner join
+    `sql-project-exam.olist.orders` o on i.order_id = o.order_id
+  group by
+    p.product_category_name, year, month
+)
+
+select
+  product_category_name,
+  year,
+  month,
+  avg(total_sales) as average_sales,
+  lag(avg(total_sales), 1) over (partition by product_category_name order by year, month) as prev_month_sales,
+  (avg(total_sales) - lag(avg(total_sales), 1) over (partition by product_category_name order by year, month)) / lag(avg(total_sales), 1) over (partition by product_category_name order by year, month) as sales_growth_rate
+from Monthly_Sales
+group by
+  product_category_name, year, month
+order by
+  product_category_name, year, month
+;
+
+##Trying some random test for seasonality
+with Monthly_Sales as (
+  select
+    p.product_category_name,
+    extract(MONTH from o.order_purchase_timestamp) as purchase_month,
+    sum(i.price) as monthly_revenue
+  from
+    `sql-project-exam.olist.Items` i
+  inner join
+    `sql-project-exam.olist.orders` o on i.order_id = o.order_id
+  inner join
+    `sql-project-exam.olist.products` p on i.product_id = p.product_id
+  group by
+    p.product_category_name, purchase_month
+)
+
+select
+  product_category_name,
+  power(abs(safe_divide(stddev_pop(monthly_revenue), avg(monthly_revenue))), 2) as periodogram
+from
+  Monthly_Sales
+group by
+  product_category_name
+order by
+  product_category_name
+;
+
+
+#Looker Studio
+select
+*,
+extract(year from o.order_purchase_timestamp) as year,
+extract(month from o.order_purchase_timestamp) as month,
+date_diff(order_delivered_customer_date, order_purchase_timestamp, day) as delivery_time
+from `sql-project-exam.olist.Items` oi
+left join `sql-project-exam.olist.products` p on (oi.product_id = p.product_id)
+left join `sql-project-exam.olist.sellers` s on (oi.seller_id = s.seller_id)
+left join `sql-project-exam.olist.orders` o on (oi.order_id = o.order_id)
+left join `sql-project-exam.olist.Customers` c on (o.customer_id =
+c.customer_id)
+;
